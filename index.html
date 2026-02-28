@@ -1,176 +1,540 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>我的轻B站</title>
-  <link rel="manifest" href="manifest.json">
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    .video-card { transition: all 0.2s; }
-    .video-card:hover { transform: scale(1.03); }
-    .tab-active { color: #fb7299; border-top: 3px solid #fb7299; }
-    .modal { animation: fadeIn 0.3s; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>我的轻B站</title>
+    <!-- 引入CDN资源，无需本地下载，轻量化适配老设备 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- PWA配置，兼容你原有的项目 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#FB7299">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="轻B站">
+    <!-- 自定义B站风格Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bilibili: '#FB7299',
+                        bilibili_dark: '#F1497E',
+                        gray_bg: '#F4F4F4',
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+            .card-hover {
+                @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-1;
+            }
+        }
+    </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen pb-16">
-  <!-- Header -->
-  <header class="bg-black sticky top-0 z-50 p-4 flex items-center justify-between">
-    <div class="flex items-center gap-2">
-      <div class="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-xl font-bold">轻</div>
-      <h1 class="text-2xl font-bold">我的轻B站</h1>
-    </div>
-    <div class="text-sm opacity-70">编程小白 · v1.0</div>
-  </header>
-
-  <!-- Main Content -->
-  <main class="p-4" id="main-content">
-    <!-- 首页 Tab 默认显示 -->
-    <div id="home-tab">
-      <div class="relative mb-6">
-        <input id="search-input" type="text" placeholder="搜索视频、UP主..." 
-               class="w-full bg-zinc-900 rounded-2xl py-3 px-5 text-base focus:outline-none focus:ring-2 focus:ring-pink-500">
-      </div>
-      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
-        🔥 今日热门
-      </h2>
-      <div id="video-grid" class="grid grid-cols-2 gap-4">
-        <!-- JS 动态填充 -->
-      </div>
-    </div>
-
-    <!-- 搜索结果（隐藏） -->
-    <div id="search-tab" class="hidden">
-      <h2 id="search-title" class="text-xl font-bold mb-4">搜索结果</h2>
-      <div id="search-grid" class="grid grid-cols-2 gap-4">
-        <!-- JS 动态填充 -->
-      </div>
-    </div>
-
-    <!-- 动态 & 我的 Tab（简易版，可后续扩展） -->
-    <div id="dynamic-tab" class="hidden text-center py-20 text-zinc-500">动态功能开发中...</div>
-    <div id="me-tab" class="hidden text-center py-20 text-zinc-500">我的空间开发中...</div>
-  </main>
-
-  <!-- 底部 Tab Bar -->
-  <nav class="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 z-50">
-    <div class="flex text-xs">
-      <button onclick="switchTab(0)" class="tab-active flex-1 py-3 flex flex-col items-center gap-1">
-        <span class="text-2xl">🏠</span><span>首页</span>
-      </button>
-      <button onclick="switchTab(1)" class="flex-1 py-3 flex flex-col items-center gap-1">
-        <span class="text-2xl">🔍</span><span>搜索</span>
-      </button>
-      <button onclick="switchTab(2)" class="flex-1 py-3 flex flex-col items-center gap-1">
-        <span class="text-2xl">📢</span><span>动态</span>
-      </button>
-      <button onclick="switchTab(3)" class="flex-1 py-3 flex flex-col items-center gap-1">
-        <span class="text-2xl">👤</span><span>我的</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- 视频播放 Modal -->
-  <div id="video-modal" class="hidden fixed inset-0 bg-black z-[100] flex items-center justify-center">
-    <div class="w-full max-w-3xl modal bg-zinc-950 rounded-3xl overflow-hidden">
-      <div class="flex justify-between items-center p-4 border-b border-zinc-800">
-        <div id="modal-title" class="font-bold"></div>
-        <button onclick="closeModal()" class="text-3xl leading-none">×</button>
-      </div>
-      <iframe id="player-frame" class="w-full aspect-video" allowfullscreen></iframe>
-    </div>
-  </div>
-
-  <script>
-    const corsProxy = "https://corsproxy.io/?";
-    let currentTab = 0;
-
-    // 切换 Tab
-    function switchTab(tab) {
-      currentTab = tab;
-      document.querySelectorAll('nav button').forEach((btn, i) => {
-        btn.classList.toggle('tab-active', i === tab);
-      });
-      document.getElementById('home-tab').classList.toggle('hidden', tab !== 0);
-      document.getElementById('search-tab').classList.toggle('hidden', tab !== 1);
-      document.getElementById('dynamic-tab').classList.toggle('hidden', tab !== 2);
-      document.getElementById('me-tab').classList.toggle('hidden', tab !== 3);
-      
-      if (tab === 1) document.getElementById('search-input').focus();
-    }
-
-    // 渲染视频卡片
-    function renderVideos(containerId, videos) {
-      const container = document.getElementById(containerId);
-      container.innerHTML = videos.map(v => `
-        <div onclick="playVideo('${v.bvid}', '${v.title}')" class="video-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer">
-          <img src="${v.pic}" class="w-full aspect-video object-cover">
-          <div class="p-3">
-            <p class="line-clamp-2 text-sm font-medium leading-tight">${v.title}</p>
-            <div class="flex items-center gap-2 mt-3 text-xs text-zinc-400">
-              <span>👁️ ${parseInt(v.stat.view).toLocaleString()}</span>
-              <span>❤️ ${parseInt(v.stat.like).toLocaleString()}</span>
+<body class="bg-gray_bg min-h-screen pb-20 overflow-x-hidden">
+    <!-- 顶部固定导航栏 -->
+    <header class="sticky top-0 z-40 bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+            <!-- Logo区域 -->
+            <div class="flex items-center gap-2">
+                <div class="w-9 h-9 bg-bilibili rounded-lg flex items-center justify-center text-white font-bold text-lg">
+                    轻
+                </div>
+                <h1 class="text-lg font-bold hidden sm:block">我的轻B站</h1>
+                <span class="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">v1.0</span>
             </div>
-          </div>
+
+            <!-- 搜索框（仅首页显示，搜索页有独立搜索框） -->
+            <div id="homeSearch" class="relative w-full max-w-lg mx-4 hidden sm:block">
+                <input 
+                    type="text" 
+                    id="homeSearchInput"
+                    placeholder="搜索感兴趣的内容..." 
+                    class="w-full py-2 px-4 pr-10 rounded-full bg-gray_bg focus:outline-none focus:ring-2 focus:ring-bilibili/30"
+                >
+                <button class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bilibili">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
         </div>
-      `).join('');
-    }
+    </header>
 
-    // 播放视频（嵌入式 Modal）
-    function playVideo(bvid, title) {
-      document.getElementById('modal-title').textContent = title;
-      const iframe = document.getElementById('player-frame');
-      iframe.src = `https://player.bilibili.com/player.html?bvid=${bvid}&page=1&autoplay=1&danmaku=1&high_quality=1`;
-      document.getElementById('video-modal').classList.remove('hidden');
-      document.getElementById('video-modal').classList.add('flex');
-    }
+    <!-- 主内容区：所有Tab页面容器 -->
+    <main class="container mx-auto px-4 py-3">
+        <!-- ========== 首页Tab内容 ========== -->
+        <section id="homePage" class="block">
+            <!-- 分区导航 -->
+            <div class="flex overflow-x-auto scrollbar-hide gap-3 py-2 mb-5">
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-bilibili text-white text-sm font-medium">推荐</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">动画</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">游戏</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">音乐</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">知识</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">科技</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">生活</div>
+                <div class="flex-shrink-0 px-4 py-1.5 rounded-full bg-white text-gray-600 text-sm font-medium hover:bg-gray-100">美食</div>
+            </div>
 
-    function closeModal() {
-      const modal = document.getElementById('video-modal');
-      modal.classList.add('hidden');
-      modal.classList.remove('flex');
-      document.getElementById('player-frame').src = '';
-    }
+            <!-- 热门内容区域 -->
+            <div>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                        <i class="fas fa-fire text-bilibili"></i> 今日热门
+                    </h2>
+                    <button id="homeRefreshBtn" class="text-sm text-bilibili hover:text-bilibili_dark flex items-center gap-1">
+                        <i class="fas fa-sync-alt"></i> 刷新
+                    </button>
+                </div>
 
-    // 获取热门视频
-    async function loadPopular() {
-      try {
-        const res = await fetch(corsProxy + encodeURIComponent('https://api.bilibili.com/x/web-interface/popular?ps=20'));
-        const data = await res.json();
-        renderVideos('video-grid', data.data.list);
-      } catch (e) {
-        document.getElementById('video-grid').innerHTML = `<p class="col-span-2 text-center py-10 text-zinc-400">网络加载失败（可稍后刷新）</p>`;
-      }
-    }
+                <!-- 加载状态 -->
+                <div id="homeLoading" class="py-20 text-center text-gray-500">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>正在加载实时热门内容...</p>
+                </div>
 
-    // 搜索功能
-    document.getElementById('search-input').addEventListener('input', async (e) => {
-      const keyword = e.target.value.trim();
-      if (!keyword) {
-        document.getElementById('search-tab').classList.add('hidden');
-        return;
-      }
-      try {
-        const res = await fetch(corsProxy + encodeURIComponent(`https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=${encodeURIComponent(keyword)}`));
-        const data = await res.json();
-        renderVideos('search-grid', data.data.result);
-        document.getElementById('search-title').textContent = `“${keyword}” 的搜索结果`;
-        document.getElementById('search-tab').classList.remove('hidden');
-      } catch (e) {}
-    });
+                <!-- 错误提示 -->
+                <div id="homeError" class="py-20 text-center hidden">
+                    <i class="fas fa-exclamation-circle text-3xl text-bilibili mb-2"></i>
+                    <p class="text-gray-600 mb-2">网络加载失败</p>
+                    <button id="homeRetryBtn" class="px-4 py-1.5 bg-bilibili text-white rounded-full text-sm">稍后重试</button>
+                </div>
 
-    // 初始化
-    window.onload = () => {
-      loadPopular();
-      switchTab(0);
-    };
+                <!-- 视频列表网格 -->
+                <div id="homeVideoList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 hidden">
+                    <!-- 视频卡片通过JS实时渲染 -->
+                </div>
+            </div>
+        </section>
 
-    // 关闭 Modal 点击空白处
-    document.getElementById('video-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'video-modal') closeModal();
-    });
-  </script>
+        <!-- ========== 搜索Tab内容 ========== -->
+        <section id="searchPage" class="hidden">
+            <!-- 搜索框（搜索页专属） -->
+            <div class="relative w-full mb-5">
+                <input 
+                    type="text" 
+                    id="searchInput"
+                    placeholder="输入关键词搜索B站全量视频..." 
+                    class="w-full py-3 px-4 pr-12 rounded-xl bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-bilibili/30"
+                >
+                <button id="searchBtn" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-bilibili text-xl">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+
+            <!-- 搜索结果区域 -->
+            <div>
+                <!-- 空状态 -->
+                <div id="searchEmpty" class="py-20 text-center text-gray-500">
+                    <i class="fas fa-search text-3xl mb-2"></i>
+                    <p>输入关键词，实时搜索B站视频</p>
+                </div>
+
+                <!-- 搜索加载状态 -->
+                <div id="searchLoading" class="py-20 text-center text-gray-500 hidden">
+                    <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p>正在搜索相关内容...</p>
+                </div>
+
+                <!-- 搜索错误提示 -->
+                <div id="searchError" class="py-20 text-center hidden">
+                    <i class="fas fa-exclamation-circle text-3xl text-bilibili mb-2"></i>
+                    <p class="text-gray-600 mb-2">搜索失败，请检查关键词或网络</p>
+                    <button id="searchRetryBtn" class="px-4 py-1.5 bg-bilibili text-white rounded-full text-sm">重新搜索</button>
+                </div>
+
+                <!-- 搜索结果列表 -->
+                <div id="searchResultList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 hidden">
+                    <!-- 搜索结果卡片通过JS实时渲染 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== 动态Tab内容 ========== -->
+        <section id="dynamicPage" class="hidden">
+            <div class="py-20 text-center text-gray-500">
+                <i class="fas fa-bell text-3xl mb-2"></i>
+                <h3 class="text-lg font-medium mb-2">动态功能开发中</h3>
+                <p class="text-sm mb-4">个人动态需登录B站账号，当前静态页面暂不支持</p>
+                <a href="https://t.bilibili.com/" target="_blank" class="px-4 py-1.5 bg-bilibili text-white rounded-full text-sm inline-block">
+                    跳转B站查看我的动态
+                </a>
+            </div>
+        </section>
+
+        <!-- ========== 我的Tab内容 ========== -->
+        <section id="minePage" class="hidden">
+            <div class="py-20 text-center text-gray-500">
+                <i class="fas fa-user-circle text-4xl mb-2"></i>
+                <h3 class="text-lg font-medium mb-2">我的空间开发中</h3>
+                <p class="text-sm mb-4">收藏、历史、关注功能需登录B站账号</p>
+                <a href="https://space.bilibili.com/" target="_blank" class="px-4 py-1.5 bg-bilibili text-white rounded-full text-sm inline-block">
+                    跳转B站个人中心
+                </a>
+            </div>
+        </section>
+    </main>
+
+    <!-- 底部固定导航栏（和你原项目完全匹配，动态Tab切换核心） -->
+    <nav class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-50">
+        <div class="max-w-lg mx-auto flex justify-around items-center py-3">
+            <button data-page="homePage" class="nav-tab flex flex-col items-center gap-1 text-bilibili">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-xs">首页</span>
+            </button>
+            <button data-page="searchPage" class="nav-tab flex flex-col items-center gap-1 text-gray-400">
+                <i class="fas fa-search text-xl"></i>
+                <span class="text-xs">搜索</span>
+            </button>
+            <button data-page="dynamicPage" class="nav-tab flex flex-col items-center gap-1 text-gray-400">
+                <i class="fas fa-bell text-xl"></i>
+                <span class="text-xs">动态</span>
+            </button>
+            <button data-page="minePage" class="nav-tab flex flex-col items-center gap-1 text-gray-400">
+                <i class="fas fa-user text-xl"></i>
+                <span class="text-xs">我的</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- 视频播放弹窗（点击视频弹出，实时加载播放地址） -->
+    <div id="playerModal" class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4">
+        <button id="closePlayer" class="absolute top-4 right-4 text-white text-2xl z-10">
+            <i class="fas fa-times"></i>
+        </button>
+        <div class="w-full max-w-4xl aspect-video">
+            <iframe id="playerIframe" src="" frameborder="0" allowfullscreen="allowfullscreen" class="w-full h-full rounded-lg" allow="autoplay; fullscreen"></iframe>
+        </div>
+    </div>
+
+    <!-- 核心JS逻辑：所有动态数据请求、交互逻辑 -->
+    <script>
+        // ========== 全局配置 ==========
+        // 跨域代理地址（主用+备用，解决B站接口跨域问题）
+        const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+        const BACKUP_PROXY_URL = 'https://cors.sh/';
+        // B站官方公开API接口（无需登录，前端可直接请求）
+        const BILIBILI_HOT_API = 'https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all'; // 全站热门
+        const BILIBILI_SEARCH_API = 'https://api.bilibili.com/x/web-interface/search/type?search_type=video'; // 视频搜索
+        const BILIBILI_PLAYER_URL = 'https://player.bilibili.com/player.html'; // 官方播放器地址
+
+        // ========== 全局元素获取 ==========
+        // Tab导航相关
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const allPages = document.querySelectorAll('section');
+        // 首页相关
+        const homeVideoList = document.getElementById('homeVideoList');
+        const homeLoading = document.getElementById('homeLoading');
+        const homeError = document.getElementById('homeError');
+        const homeRefreshBtn = document.getElementById('homeRefreshBtn');
+        const homeRetryBtn = document.getElementById('homeRetryBtn');
+        const homeSearchInput = document.getElementById('homeSearchInput');
+        // 搜索相关
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const searchResultList = document.getElementById('searchResultList');
+        const searchEmpty = document.getElementById('searchEmpty');
+        const searchLoading = document.getElementById('searchLoading');
+        const searchError = document.getElementById('searchError');
+        const searchRetryBtn = document.getElementById('searchRetryBtn');
+        // 播放器相关
+        const playerModal = document.getElementById('playerModal');
+        const playerIframe = document.getElementById('playerIframe');
+        const closePlayer = document.getElementById('closePlayer');
+
+        // ========== 工具函数 ==========
+        // 数字格式化（适配B站播放量显示：1万+显示X.X万，1亿+显示X.X亿）
+        function formatNumber(num) {
+            if (!num) return '0';
+            if (num >= 100000000) return (num / 100000000).toFixed(1) + '亿';
+            if (num >= 10000) return (num / 10000).toFixed(1) + '万';
+            return num.toString();
+        }
+
+        // 时长格式化（秒转时分秒）
+        function formatDuration(seconds) {
+            if (!seconds) return '00:00';
+            const h = Math.floor(seconds / 3600);
+            const m = Math.floor((seconds % 3600) / 60);
+            const s = Math.floor(seconds % 60);
+            if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            return `${m}:${String(s).padStart(2, '0')}`;
+        }
+
+        // 防抖函数（搜索优化，避免频繁请求接口）
+        function debounce(fn, delay = 500) {
+            let timer = null;
+            return function (...args) {
+                clearTimeout(timer);
+                timer = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        // 接口请求函数（带代理切换，失败自动重试备用代理）
+        async function fetchBilibiliApi(apiUrl) {
+            try {
+                // 先用主代理请求
+                const res = await fetch(PROXY_URL + encodeURIComponent(apiUrl));
+                if (!res.ok) throw new Error('主代理请求失败');
+                const data = await res.json();
+                return data;
+            } catch (err) {
+                console.warn('主代理失败，切换备用代理', err);
+                // 主代理失败，用备用代理重试
+                const res = await fetch(BACKUP_PROXY_URL + apiUrl);
+                if (!res.ok) throw new Error('备用代理请求失败');
+                const data = await res.json();
+                return data;
+            }
+        }
+
+        // ========== Tab切换核心逻辑 ==========
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetPageId = tab.getAttribute('data-page');
+                // 隐藏所有页面
+                allPages.forEach(page => page.classList.add('hidden'));
+                // 显示目标页面
+                document.getElementById(targetPageId).classList.remove('hidden');
+                // 切换导航样式
+                navTabs.forEach(t => {
+                    t.classList.remove('text-bilibili');
+                    t.classList.add('text-gray-400');
+                });
+                tab.classList.remove('text-gray-400');
+                tab.classList.add('text-bilibili');
+                // 切换到搜索页时，自动聚焦搜索框
+                if (targetPageId === 'searchPage') searchInput.focus();
+            });
+        });
+
+        // 首页搜索框回车跳转到搜索页
+        homeSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && homeSearchInput.value.trim()) {
+                // 切换到搜索页
+                document.querySelector('[data-page="searchPage"]').click();
+                // 填充搜索关键词并触发搜索
+                searchInput.value = homeSearchInput.value.trim();
+                handleSearch();
+            }
+        });
+
+        // ========== 首页实时热门数据逻辑 ==========
+        // 获取并渲染热门视频列表
+        async function getHotVideoList() {
+            // 重置状态
+            homeLoading.classList.remove('hidden');
+            homeVideoList.classList.add('hidden');
+            homeError.classList.add('hidden');
+
+            try {
+                // 实时请求B站热门接口
+                const data = await fetchBilibiliApi(BILIBILI_HOT_API);
+                // 校验接口返回
+                if (data.code === 0 && data.data?.list) {
+                    const videoList = data.data.list;
+                    // 渲染视频卡片
+                    renderHomeVideoList(videoList);
+                    // 切换显示状态
+                    homeLoading.classList.add('hidden');
+                    homeVideoList.classList.remove('hidden');
+                } else {
+                    throw new Error(data.message || '热门数据获取失败');
+                }
+            } catch (err) {
+                console.error('热门数据请求失败：', err);
+                // 显示错误状态
+                homeLoading.classList.add('hidden');
+                homeError.classList.remove('hidden');
+            }
+        }
+
+        // 渲染首页视频列表
+        function renderHomeVideoList(list) {
+            homeVideoList.innerHTML = list.map(item => `
+                <div class="card-hover bg-white rounded-xl overflow-hidden video-card" data-bvid="${item.bvid}" data-title="${item.title}">
+                    <!-- 视频封面 -->
+                    <div class="relative w-full aspect-video overflow-hidden">
+                        <img src="${item.pic}@480w_300h_1c.webp" alt="${item.title}" class="w-full h-full object-cover" loading="lazy">
+                        <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                            ${formatDuration(item.duration)}
+                        </span>
+                    </div>
+                    <!-- 视频信息 -->
+                    <div class="p-3">
+                        <h3 class="font-medium text-sm line-clamp-2 mb-2 h-10" title="${item.title}">${item.title}</h3>
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-play"></i>
+                                ${formatNumber(item.stat.view)}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-comment-dots"></i>
+                                ${formatNumber(item.stat.danmaku)}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1 text-xs text-gray-500">
+                            <img src="${item.owner.face}@32w_32h.webp" alt="${item.owner.name}" class="w-4 h-4 rounded-full" loading="lazy">
+                            <span class="truncate">${item.owner.name}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 给所有视频卡片绑定点击播放事件
+            document.querySelectorAll('.video-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const bvid = card.getAttribute('data-bvid');
+                    openPlayer(bvid);
+                });
+            });
+        }
+
+        // 首页刷新/重试按钮绑定
+        homeRefreshBtn.addEventListener('click', getHotVideoList);
+        homeRetryBtn.addEventListener('click', getHotVideoList);
+
+        // ========== 实时搜索功能逻辑 ==========
+        // 搜索核心函数
+        async function handleSearch() {
+            const keyword = searchInput.value.trim();
+            if (!keyword) {
+                searchEmpty.classList.remove('hidden');
+                searchResultList.classList.add('hidden');
+                searchLoading.classList.add('hidden');
+                searchError.classList.add('hidden');
+                return;
+            }
+
+            // 重置状态
+            searchEmpty.classList.add('hidden');
+            searchLoading.classList.remove('hidden');
+            searchResultList.classList.add('hidden');
+            searchError.classList.add('hidden');
+
+            try {
+                // 实时请求B站搜索接口
+                const searchApi = `${BILIBILI_SEARCH_API}&keyword=${encodeURIComponent(keyword)}&page=1&pagesize=20`;
+                const data = await fetchBilibiliApi(searchApi);
+                // 校验接口返回
+                if (data.code === 0 && data.data?.result) {
+                    const resultList = data.data.result;
+                    // 渲染搜索结果
+                    renderSearchResultList(resultList);
+                    // 切换显示状态
+                    searchLoading.classList.add('hidden');
+                    searchResultList.classList.remove('hidden');
+                } else {
+                    throw new Error(data.message || '搜索失败');
+                }
+            } catch (err) {
+                console.error('搜索请求失败：', err);
+                // 显示错误状态
+                searchLoading.classList.add('hidden');
+                searchError.classList.remove('hidden');
+            }
+        }
+
+        // 渲染搜索结果列表
+        function renderSearchResultList(list) {
+            searchResultList.innerHTML = list.map(item => `
+                <div class="card-hover bg-white rounded-xl overflow-hidden search-card" data-bvid="${item.bvid}" data-title="${item.title}">
+                    <!-- 视频封面 -->
+                    <div class="relative w-full aspect-video overflow-hidden">
+                        <img src="${item.pic}@480w_300h_1c.webp" alt="${item.title}" class="w-full h-full object-cover" loading="lazy">
+                        <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">
+                            ${formatDuration(item.duration)}
+                        </span>
+                    </div>
+                    <!-- 视频信息 -->
+                    <div class="p-3">
+                        <h3 class="font-medium text-sm line-clamp-2 mb-2 h-10" title="${item.title}">${item.title.replace(/<em class="keyword">|<\/em>/g, '')}</h3>
+                        <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-play"></i>
+                                ${formatNumber(item.play)}
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="fas fa-comment-dots"></i>
+                                ${formatNumber(item.danmaku)}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-1 text-xs text-gray-500">
+                            <img src="${item.upic}@32w_32h.webp" alt="${item.author}" class="w-4 h-4 rounded-full" loading="lazy">
+                            <span class="truncate">${item.author}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            // 给所有搜索结果卡片绑定点击播放事件
+            document.querySelectorAll('.search-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    const bvid = card.getAttribute('data-bvid');
+                    openPlayer(bvid);
+                });
+            });
+        }
+
+        // 搜索事件绑定（防抖优化，输入停止500ms后自动搜索）
+        const debounceSearch = debounce(handleSearch);
+        searchInput.addEventListener('input', debounceSearch);
+        searchBtn.addEventListener('click', handleSearch);
+        searchInput.addEventListener('keydown', (e) => e.key === 'Enter' && handleSearch());
+        searchRetryBtn.addEventListener('click', handleSearch);
+
+        // ========== 视频播放器逻辑 ==========
+        // 打开播放器
+        function openPlayer(bvid) {
+            if (!bvid) return;
+            // 设置播放器地址，实时加载视频
+            playerIframe.src = `${BILIBILI_PLAYER_URL}?bvid=${bvid}&autoplay=1&high_quality=1&danmaku=1`;
+            // 显示弹窗
+            playerModal.classList.remove('hidden');
+            playerModal.classList.add('flex');
+            // 禁止页面滚动
+            document.body.style.overflow = 'hidden';
+        }
+
+        // 关闭播放器
+        function closePlayerModal() {
+            playerModal.classList.add('hidden');
+            playerModal.classList.remove('flex');
+            // 清空iframe地址，停止播放
+            playerIframe.src = '';
+            // 恢复页面滚动
+            document.body.style.overflow = 'auto';
+        }
+
+        // 关闭按钮绑定
+        closePlayer.addEventListener('click', closePlayerModal);
+        // 点击弹窗空白处关闭
+        playerModal.addEventListener('click', (e) => e.target === playerModal && closePlayerModal());
+        // 按ESC键关闭
+        document.addEventListener('keydown', (e) => e.key === 'Escape' && !playerModal.classList.contains('hidden') && closePlayerModal());
+
+        // ========== 页面初始化 ==========
+        // 页面加载完成后，自动获取实时热门数据
+        window.onload = () => {
+            getHotVideoList();
+            // 注册Service Worker，保留PWA功能
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(err => console.log('SW注册失败', err));
+            }
+        };
+    </script>
 </body>
 </html>
