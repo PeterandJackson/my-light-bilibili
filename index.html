@@ -3,351 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 核心：解决B站图片防盗链，必加 -->
+    <meta name="referrer" content="no-referrer">
     <title>我的轻B站</title>
-    <!-- 极简样式，适配老设备，全互动反馈 -->
+    <!-- 国内可访问的CDN资源 -->
+    <script src="https://cdn.tailwindcss.cn"></script>
+    <link rel="stylesheet" href="https://cdn.staticfile.net/font-awesome/6.4.0/css/all.min.css">
+    <!-- PWA配置 -->
+    <link rel="manifest" href="./manifest.json">
+    <meta name="theme-color" content="#FB7299">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- Tailwind配置 -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        bilibili: '#FB7299',
+                        bilibili_dark: '#F1497E',
+                        gray_bg: '#F4F4F4',
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+            }
+            .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+        }
+    </style>
     <style>
         * {
+            -webkit-tap-highlight-color: transparent;
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: system-ui, -apple-system, sans-serif;
-            -webkit-tap-highlight-color: transparent;
         }
-        body {
-            background-color: #f4f4f4;
-            padding-bottom: 80px;
+        /* 图片容器兼容写法，确保所有设备都能正常显示 */
+        .video-cover {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%;
+            overflow: hidden;
+            border-radius: 10px 10px 0 0;
         }
-        /* 顶部导航（1:1还原你的原有标识） */
-        .header {
-            background: #fff;
-            padding: 12px 16px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            position: sticky;
+        .video-cover img {
+            position: absolute;
             top: 0;
-            z-index: 10;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
-        .logo {
-            width: 36px;
-            height: 36px;
-            background: #FB7299;
-            border-radius: 8px;
-            color: #fff;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .title {
-            font-size: 18px;
-            font-weight: bold;
-        }
-        .user-tag {
-            font-size: 12px;
-            color: #666;
-            margin-left: 4px;
-        }
-        .version {
-            font-size: 12px;
-            color: #999;
-            background: #f1f1f1;
-            padding: 2px 6px;
-            border-radius: 4px;
-            margin-left: 4px;
-        }
-        /* 热门标题区+刷新按钮反馈 */
-        .hot-title {
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .hot-title h2 {
-            font-size: 18px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        /* 刷新按钮核心样式，全状态反馈 */
-        .refresh-btn {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 14px;
-            color: #FB7299;
-            border: none;
-            background: #fff;
-            cursor: pointer;
-            padding: 6px 10px;
-            border-radius: 6px;
-            transition: all 0.2s ease;
-        }
-        /* 按下瞬间的反馈 */
-        .refresh-btn:active {
-            transform: scale(0.95);
-            background: #FB729915;
-        }
-        /* 刷新中的状态 */
-        .refresh-btn.loading {
-            color: #999;
-            background: #f1f1f1;
-            cursor: not-allowed;
-        }
-        .refresh-btn.loading .refresh-icon {
+        /* 刷新按钮动画 */
+        .refresh-icon.loading {
             animation: rotate 0.6s linear infinite;
         }
         @keyframes rotate {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
         }
-        /* 刷新成功提示 */
+        /* 成功提示 */
         .success-tip {
-            position: fixed;
-            top: 60px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #10b981;
-            color: #fff;
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            z-index: 99;
             opacity: 0;
             transition: opacity 0.3s ease;
         }
         .success-tip.show {
             opacity: 1;
         }
-        /* 加载/错误状态 */
-        .status-box {
-            padding: 60px 20px;
-            text-align: center;
-            color: #666;
-        }
-        .error-box button {
-            margin-top: 12px;
-            padding: 8px 16px;
-            background: #FB7299;
-            color: #fff;
-            border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .error-box button:active {
-            transform: scale(0.95);
-            background: #F1497E;
-        }
-        /* 视频列表 */
-        .video-list {
-            padding: 0 12px;
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-        .video-card {
-            background: #fff;
-            border-radius: 10px;
-            overflow: hidden;
-            text-decoration: none;
-            color: #333;
-            transition: all 0.2s;
-        }
-        .video-card:active {
-            transform: scale(0.98);
-        }
-        .video-cover {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 16/9;
-            overflow: hidden;
-        }
-        .video-cover img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .duration {
-            position: absolute;
-            bottom: 6px;
-            right: 6px;
-            background: rgba(0,0,0,0.6);
-            color: #fff;
-            font-size: 12px;
-            padding: 2px 4px;
-            border-radius: 3px;
-        }
-        .video-info {
-            padding: 8px;
-        }
-        .video-title {
-            font-size: 14px;
-            line-height: 1.4;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            margin-bottom: 6px;
-        }
-        .video-meta {
-            font-size: 12px;
-            color: #999;
-            display: flex;
-            justify-content: space-between;
-        }
-        /* 底部导航（1:1还原你的原有Tab） */
-        .nav-bar {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: #fff;
-            display: flex;
-            justify-content: space-around;
-            padding: 10px 0;
-            box-shadow: 0 -2px 8px rgba(0,0,0,0.05);
-            z-index: 10;
-        }
-        .nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            text-decoration: none;
-            color: #999;
-            font-size: 12px;
-            padding: 4px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .nav-item.active {
-            color: #FB7299;
-        }
-        .nav-item:active {
-            transform: scale(0.95);
-            background: #f1f1f1;
-        }
-        .nav-item .icon {
-            font-size: 20px;
-        }
-        /* 开发中提示页（1:1还原你的原有文本） */
-        .dev-tip {
-            padding: 40px 20px;
-            text-align: center;
-            color: #666;
-            display: none;
-        }
-        /* 隐藏工具类 */
-        .hidden {
-            display: none !important;
-        }
     </style>
-    <!-- 图标库，兼容老设备 -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- 保留你原有的PWA配置 -->
-    <link rel="manifest" href="./manifest.json">
-    <meta name="theme-color" content="#FB7299">
 </head>
-<body>
+<body class="bg-gray_bg min-h-screen pb-20 overflow-x-hidden">
     <!-- 刷新成功提示 -->
-    <div class="success-tip" id="successTip">刷新成功，已更新最新热门数据</div>
+    <div class="success-tip fixed top-14 left-1/2 -translate-x-1/2 bg-green-500 text-white px-4 py-1.5 rounded-full text-xs z-50" id="successTip">
+        刷新成功，已更新最新热门数据
+    </div>
 
-    <!-- 顶部导航（1:1还原你的原有页面） -->
-    <header class="header">
-        <div class="logo">轻</div>
-        <div class="title">我的轻B站</div>
-        <div class="user-tag">编程小白</div>
-        <div class="version">v1.0</div>
+    <!-- 顶部导航 -->
+    <header class="sticky top-0 z-40 bg-white shadow-sm">
+        <div class="container mx-auto px-4 py-3 flex items-center gap-2 flex-wrap">
+            <div class="w-9 h-9 bg-bilibili rounded-lg flex items-center justify-center text-white font-bold text-lg">轻</div>
+            <h1 class="text-lg font-bold">我的轻B站</h1>
+            <span class="text-xs text-gray-500">编程小白</span>
+            <span class="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">v1.0</span>
+        </div>
     </header>
 
-    <!-- 首页内容 -->
-    <main id="home-page" class="page-content">
-        <div class="hot-title">
-            <h2>🔥 今日热门</h2>
-            <button class="refresh-btn" id="refreshBtn">
-                <span class="refresh-icon"><i class="fas fa-sync-alt"></i></span>
-                <span class="refresh-text">刷新</span>
-            </button>
-        </div>
+    <!-- 主内容区 -->
+    <main class="container mx-auto px-4 py-3">
+        <!-- 首页内容 -->
+        <section id="homePage" class="block">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    🔥 今日热门
+                </h2>
+                <button id="refreshBtn" class="text-sm text-bilibili flex items-center gap-1 px-2 py-1 rounded hover:bg-bilibili/5 transition-all">
+                    <span class="refresh-icon"><i class="fas fa-sync-alt"></i></span>
+                    <span class="refresh-text">刷新</span>
+                </button>
+            </div>
 
-        <!-- 加载状态 -->
-        <div class="status-box" id="loadingBox">
-            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 8px;"></i>
-            <p>正在加载热门内容...</p>
-        </div>
+            <!-- 加载状态 -->
+            <div id="loadingBox" class="py-20 text-center text-gray-500">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>正在加载热门内容...</p>
+            </div>
 
-        <!-- 错误状态（1:1还原你的原有提示文本） -->
-        <div class="status-box error-box hidden" id="errorBox">
-            <i class="fas fa-exclamation-circle" style="font-size: 24px; margin-bottom: 8px; color: #FB7299;"></i>
-            <p>网络加载失败(可稍后刷新)</p>
-            <button id="retryBtn">立即刷新</button>
-        </div>
+            <!-- 错误状态 -->
+            <div id="errorBox" class="py-20 text-center hidden">
+                <i class="fas fa-exclamation-circle text-3xl text-bilibili mb-2"></i>
+                <p class="text-gray-600 mb-2">网络加载失败(可稍后刷新)</p>
+                <button id="retryBtn" class="px-4 py-1.5 bg-bilibili text-white rounded-full text-sm hover:bg-bilibili_dark transition-all">立即刷新</button>
+            </div>
 
-        <!-- 视频列表 -->
-        <div class="video-list hidden" id="videoList"></div>
+            <!-- 视频列表 -->
+            <div id="videoList" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 hidden"></div>
+        </section>
+
+        <!-- 其他Tab占位 -->
+        <section id="searchPage" class="hidden py-20 text-center text-gray-500">
+            <i class="fas fa-search text-3xl mb-2"></i>
+            <h3>搜索结果</h3>
+            <p class="my-2">功能开发中...</p>
+        </section>
+        <section id="dynamicPage" class="hidden py-20 text-center text-gray-500">
+            <i class="fas fa-bell text-3xl mb-2"></i>
+            <h3>动态功能开发中...</h3>
+        </section>
+        <section id="minePage" class="hidden py-20 text-center text-gray-500">
+            <i class="fas fa-user text-3xl mb-2"></i>
+            <h3>我的空间开发中...</h3>
+        </section>
     </main>
 
-    <!-- 搜索页（还原原有占位文本） -->
-    <div class="dev-tip page-content" id="search-page">
-        <i class="fas fa-search" style="font-size: 30px; margin-bottom: 12px;"></i>
-        <h3>搜索结果</h3>
-        <p style="margin: 8px 0;">功能开发中...</p>
-    </div>
-
-    <!-- 动态页（还原原有占位文本） -->
-    <div class="dev-tip page-content" id="dynamic-page">
-        <i class="fas fa-bell" style="font-size: 30px; margin-bottom: 12px;"></i>
-        <h3>动态功能开发中...</h3>
-    </div>
-
-    <!-- 我的页（还原原有占位文本） -->
-    <div class="dev-tip page-content" id="mine-page">
-        <i class="fas fa-user" style="font-size: 30px; margin-bottom: 12px;"></i>
-        <h3>我的空间开发中...</h3>
-    </div>
-
-    <!-- 底部导航（1:1还原你的原有Tab） -->
-    <nav class="nav-bar">
-        <a class="nav-item active" data-page="home-page">
-            <span class="icon"><i class="fas fa-home"></i></span>
-            <span>首页</span>
-        </a>
-        <a class="nav-item" data-page="search-page">
-            <span class="icon"><i class="fas fa-search"></i></span>
-            <span>搜索</span>
-        </a>
-        <a class="nav-item" data-page="dynamic-page">
-            <span class="icon"><i class="fas fa-bell"></i></span>
-            <span>动态</span>
-        </a>
-        <a class="nav-item" data-page="mine-page">
-            <span class="icon"><i class="fas fa-user"></i></span>
-            <span>我的</span>
-        </a>
+    <!-- 底部导航 -->
+    <nav class="fixed bottom-0 left-0 w-full bg-white shadow-[0_-2px_10px_rgba(0,0,0,0.05)] z-50">
+        <div class="max-w-lg mx-auto flex justify-around items-center py-3">
+            <button data-page="homePage" class="nav-tab flex flex-col items-center gap-1 text-bilibili px-3 py-1 rounded">
+                <i class="fas fa-home text-xl"></i>
+                <span class="text-xs">首页</span>
+            </button>
+            <button data-page="searchPage" class="nav-tab flex flex-col items-center gap-1 text-gray-400 px-3 py-1 rounded">
+                <i class="fas fa-search text-xl"></i>
+                <span class="text-xs">搜索</span>
+            </button>
+            <button data-page="dynamicPage" class="nav-tab flex flex-col items-center gap-1 text-gray-400 px-3 py-1 rounded">
+                <i class="fas fa-bell text-xl"></i>
+                <span class="text-xs">动态</span>
+            </button>
+            <button data-page="minePage" class="nav-tab flex flex-col items-center gap-1 text-gray-400 px-3 py-1 rounded">
+                <i class="fas fa-user text-xl"></i>
+                <span class="text-xs">我的</span>
+            </button>
+        </div>
     </nav>
 
-    <!-- 核心JS逻辑，完全匹配你的刷新需求 -->
+    <!-- 核心JS逻辑 -->
     <script>
-        // 全局元素获取
+        // 全局元素
         const refreshBtn = document.getElementById('refreshBtn');
         const refreshText = refreshBtn.querySelector('.refresh-text');
+        const refreshIcon = refreshBtn.querySelector('.refresh-icon');
         const retryBtn = document.getElementById('retryBtn');
         const loadingBox = document.getElementById('loadingBox');
         const errorBox = document.getElementById('errorBox');
         const videoList = document.getElementById('videoList');
         const successTip = document.getElementById('successTip');
-        const navItems = document.querySelectorAll('.nav-item');
-        const allPages = document.querySelectorAll('.page-content');
+        const navTabs = document.querySelectorAll('.nav-tab');
+        const allPages = document.querySelectorAll('section');
 
-        // 核心配置
-        const PROXY_URL = 'https://api.allorigins.win/raw?url=';
-        // B站热门API，加时间戳防缓存，保证每次请求都是最新的
+        // 双代理兜底，国内可访问
+        const PROXY_LIST = [
+            'https://api.allorigins.win/raw?url=',
+            'https://cors.sh/'
+        ];
+        let proxyIndex = 0;
+        // B站热门API，加时间戳防缓存
         const BILIBILI_API = 'https://api.bilibili.com/x/web-interface/ranking/v2?rid=0&type=all';
-        // 用于中断上一次未完成的请求，避免重复请求乱序
         let abortController = null;
+        // 图片加载失败兜底占位图
+        const PLACEHOLDER_IMG = 'https://picsum.photos/480/300?grayscale&blur=2';
 
         // 工具函数
         function formatNum(num) {
@@ -361,96 +206,117 @@
             const s = Math.floor(seconds % 60);
             return `${m}:${String(s).padStart(2, '0')}`;
         }
-        // 刷新成功提示
-        function showSuccessTip() {
+        function showSuccess() {
             successTip.classList.add('show');
-            setTimeout(() => {
-                successTip.classList.remove('show');
-            }, 1500);
+            setTimeout(() => successTip.classList.remove('show'), 1500);
         }
 
-        // ========== 核心刷新函数：你按一次，就执行一次完整的刷新+请求 ==========
+        // 核心刷新+数据请求函数
         async function refreshHotData() {
-            // 1. 点击瞬间：立刻给反馈，重置页面状态
-            refreshBtn.classList.add('loading');
+            // 点击瞬间反馈
+            refreshBtn.disabled = true;
             refreshText.textContent = '刷新中...';
-            // 中断上一次未完成的请求，保证只保留最新的请求
+            refreshIcon.classList.add('loading');
+            // 中断上一次未完成的请求
             if (abortController) abortController.abort();
             abortController = new AbortController();
-            // 清空旧视频内容，重置显示状态，让你看到页面正在刷新
+
+            // 重置页面状态
             videoList.innerHTML = '';
             videoList.classList.add('hidden');
             errorBox.classList.add('hidden');
             loadingBox.classList.remove('hidden');
 
             try {
-                // 2. 发起全新的B站数据请求，加时间戳强制不缓存
-                const fullApiUrl = `${BILIBILI_API}&t=${Date.now()}`;
-                const res = await fetch(PROXY_URL + encodeURIComponent(fullApiUrl), {
-                    signal: abortController.signal
+                // 发起全新请求，加时间戳防缓存
+                const currentProxy = PROXY_LIST[proxyIndex];
+                const fullApi = `${BILIBILI_API}&t=${Date.now()}`;
+                const res = await fetch(currentProxy + encodeURIComponent(fullApi), {
+                    signal: abortController.signal,
+                    timeout: 10000
                 });
                 if (!res.ok) throw new Error('请求失败');
                 
                 const data = await res.json();
                 if (data.code !== 0 || !data.data?.list) throw new Error('数据获取失败');
 
-                // 3. 请求成功：渲染全新的内容，刷新页面
+                // 渲染视频列表+图片，加加载兜底
                 const videoData = data.data.list;
-                videoList.innerHTML = videoData.map(item => `
-                    <a class="video-card" href="https://www.bilibili.com/video/${item.bvid}" target="_blank" title="${item.title}">
-                        <div class="video-cover">
-                            <img src="${item.pic}@480w_300h.webp" alt="${item.title}" loading="lazy">
-                            <span class="duration">${formatDuration(item.duration)}</span>
-                        </div>
-                        <div class="video-info">
-                            <div class="video-title">${item.title}</div>
-                            <div class="video-meta">
-                                <span><i class="fas fa-play" style="margin-right: 2px;"></i>${formatNum(item.stat.view)}</span>
-                                <span><i class="fas fa-comment-dots" style="margin-right: 2px;"></i>${formatNum(item.stat.danmaku)}</span>
+                videoList.innerHTML = videoData.map(item => {
+                    // 处理图片链接：强制https+裁剪+格式优化
+                    const imgUrl = item.pic.replace('http://', 'https://') + '@480w_300h_1c.webp';
+                    return `
+                        <a href="https://www.bilibili.com/video/${item.bvid}" target="_blank" class="bg-white rounded-xl overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all">
+                            <div class="video-cover">
+                                <img 
+                                    src="${imgUrl}" 
+                                    alt="${item.title}" 
+                                    loading="lazy"
+                                    onerror="this.src='${PLACEHOLDER_IMG}'"
+                                >
+                                <span class="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-1.5 py-0.5 rounded">${formatDuration(item.duration)}</span>
                             </div>
-                        </div>
-                    </a>
-                `).join('');
+                            <div class="p-3">
+                                <h3 class="font-medium text-sm line-clamp-2 mb-2 h-10">${item.title}</h3>
+                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                    <span><i class="fas fa-play mr-1"></i>${formatNum(item.stat.view)}</span>
+                                    <span><i class="fas fa-comment-dots mr-1"></i>${formatNum(item.stat.danmaku)}</span>
+                                </div>
+                                <div class="mt-2 text-xs text-gray-400 truncate">
+                                    <img src="${item.owner.face.replace('http://','https://')}@32w_32h.webp" alt="${item.owner.name}" class="w-4 h-4 rounded-full inline-block mr-1" onerror="this.src='${PLACEHOLDER_IMG}'" loading="lazy">
+                                    ${item.owner.name}
+                                </div>
+                            </div>
+                        </a>
+                    `;
+                }).join('');
 
-                // 4. 刷新完成：更新状态，给成功反馈
+                // 刷新成功
                 loadingBox.classList.add('hidden');
                 videoList.classList.remove('hidden');
-                showSuccessTip();
+                showSuccess();
+                proxyIndex = 0;
 
             } catch (err) {
-                // 忽略主动中断的请求报错
                 if (err.name === 'AbortError') return;
                 console.error('刷新失败：', err);
-                // 请求失败：显示错误提示
+                // 自动切换代理重试
+                if (proxyIndex < PROXY_LIST.length - 1) {
+                    proxyIndex++;
+                    refreshBtn.disabled = false;
+                    refreshHotData();
+                    return;
+                }
+                // 显示错误
                 loadingBox.classList.add('hidden');
                 errorBox.classList.remove('hidden');
             } finally {
-                // 无论成功失败，都重置按钮状态
-                refreshBtn.classList.remove('loading');
+                // 重置按钮状态
+                refreshBtn.disabled = false;
                 refreshText.textContent = '刷新';
+                refreshIcon.classList.remove('loading');
                 abortController = null;
             }
         }
 
-        // ========== 事件绑定：按一次刷新按钮，就执行一次刷新请求 ==========
+        // 事件绑定
         refreshBtn.addEventListener('click', refreshHotData);
         retryBtn.addEventListener('click', refreshHotData);
-
-        // 底部导航Tab切换
-        navItems.forEach(item => {
-            item.addEventListener('click', () => {
-                const targetPage = item.getAttribute('data-page');
+        // Tab切换
+        navTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetPage = tab.getAttribute('data-page');
                 allPages.forEach(page => page.classList.add('hidden'));
                 document.getElementById(targetPage).classList.remove('hidden');
-                navItems.forEach(nav => nav.classList.remove('active'));
-                item.classList.add('active');
+                navTabs.forEach(t => t.classList.remove('text-bilibili'));
+                tab.classList.add('text-bilibili');
             });
         });
 
-        // 页面加载完成，自动执行第一次刷新请求
+        // 页面初始化
         window.addEventListener('DOMContentLoaded', () => {
             refreshHotData();
-            // 保留PWA功能
+            // 注册PWA服务
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('./sw.js').catch(() => {});
             }
