@@ -1,26 +1,165 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的轻B站</title>
-    
-    <!-- iOS 12~26 全兼容 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="我的轻B站">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>我的轻B站</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
-    
+    <link rel="preconnect" href="https://www.bilibili.com" crossorigin>
+    <link rel="dns-prefetch" href="https://www.bilibili.com">
     <style>
-        body { margin:0; background:#000; color:white; text-align:center; padding-top:40vh; font-family:sans-serif; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        .btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn:active { transform: scale(0.95); }
     </style>
-    <script>
-        // 自动进入B站手机版（老设备最流畅）
-        window.location.href = "https://m.bilibili.com";
-    </script>
 </head>
-<body>
-    <p>🚀 正在进入轻量B站...</p>
-    <p style="font-size:14px;opacity:0.7;">（编程小白亲手制作）</p>
+<body class="bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen flex flex-col">
+    <!-- 顶部标题栏 -->
+    <div class="fixed top-0 left-0 right-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 z-50">
+        <div class="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 bg-gradient-to-br from-pink-500 to-purple-500 rounded-3xl flex items-center justify-center text-white text-2xl shadow">哔</div>
+                <div>
+                    <div class="font-semibold text-2xl tracking-tighter">我的轻B站</div>
+                    <div class="text-xs text-zinc-500 dark:text-zinc-400 -mt-1">iOS 17风格 · 老设备友好</div>
+                </div>
+            </div>
+            <button id="nightBtn" class="w-11 h-11 flex items-center justify-center text-3xl rounded-3xl bg-zinc-100 dark:bg-zinc-800 active:scale-95 transition">
+                🌙
+            </button>
+        </div>
+    </div>
+
+    <!-- 主区域 -->
+    <div class="flex-1 pt-24 pb-32 max-w-md mx-auto w-full px-6">
+        <div class="mt-6 bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl p-8">
+            <div class="text-center mb-10">
+                <div class="mx-auto w-24 h-24 bg-gradient-to-br from-pink-500 via-purple-500 to-violet-500 rounded-3xl flex items-center justify-center text-6xl shadow-inner mb-6">🚀</div>
+                <h1 class="text-4xl font-bold tracking-tighter">欢迎回来！</h1>
+                <p id="currentMode" class="mt-2 text-lg text-zinc-500 dark:text-zinc-400">当前默认：桌面版</p>
+            </div>
+
+            <!-- 切换按钮区 -->
+            <div class="grid grid-cols-2 gap-4">
+                <button onclick="openVersion('desktop')" 
+                        class="btn col-span-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:border-pink-500 rounded-3xl py-6 text-xl font-semibold shadow flex items-center justify-center gap-3">
+                    💻 打开桌面版
+                </button>
+                <button onclick="openVersion('mobile')" 
+                        class="btn bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:border-pink-500 rounded-3xl py-6 text-xl font-semibold shadow flex items-center justify-center gap-3">
+                    📱 打开手机版
+                </button>
+            </div>
+
+            <div class="mt-8 flex items-center gap-3 text-sm">
+                <input type="checkbox" id="rememberCheck" class="w-5 h-5 accent-pink-500">
+                <label for="rememberCheck" class="text-zinc-500 dark:text-zinc-400">记住本次选择，下次自动打开</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部按钮区 -->
+    <div class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 z-50">
+        <div class="max-w-md mx-auto px-6 py-4">
+            <button onclick="clearCache()" 
+                    class="btn w-full bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-white font-semibold text-xl py-5 rounded-3xl shadow-lg flex items-center justify-center gap-3">
+                🧹 一键清理缓存
+            </button>
+            <p class="text-center text-xs text-zinc-400 mt-3">清理后重启App更丝滑</p>
+        </div>
+    </div>
+
+    <!-- Toast提示 -->
+    <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-6 py-3 rounded-3xl shadow-2xl flex items-center gap-3 text-base">
+        <span id="toastIcon"></span>
+        <span id="toastText"></span>
+    </div>
+
+    <script>
+        // Tailwind暗黑模式配置
+        function initTailwind() {
+            tailwind.config = { darkMode: 'class' };
+        }
+        initTailwind();
+
+        // 夜间模式（永久保存）
+        const nightBtn = document.getElementById('nightBtn');
+        let isDark = localStorage.getItem('darkMode') !== 'false';
+        document.documentElement.classList.toggle('dark', isDark);
+        nightBtn.textContent = isDark ? '☀️' : '🌙';
+
+        nightBtn.addEventListener('click', () => {
+            isDark = !isDark;
+            localStorage.setItem('darkMode', isDark);
+            document.documentElement.classList.toggle('dark', isDark);
+            nightBtn.textContent = isDark ? '☀️' : '🌙';
+        });
+
+        // 显示Toast
+        function showToast(text, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const msg = document.getElementById('toastText');
+            icon.textContent = type === 'success' ? '✅' : '❌';
+            msg.textContent = text;
+            toast.classList.remove('hidden');
+            toast.classList.add('flex');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+                toast.classList.remove('flex');
+            }, 2500);
+        }
+
+        // 一键清理缓存
+        async function clearCache() {
+            try {
+                // 清理所有缓存
+                if ('caches' in window) {
+                    const keys = await caches.keys();
+                    await Promise.all(keys.map(key => caches.delete(key)));
+                }
+                // 注销Service Worker
+                if ('serviceWorker' in navigator) {
+                    const registrations = await navigator.serviceWorker.getRegistrations();
+                    await Promise.all(registrations.map(reg => reg.unregister()));
+                }
+                showToast('✅ 缓存清理成功！重启App体验更丝滑', 'success');
+                setTimeout(() => location.reload(), 1800);
+            } catch (err) {
+                showToast('❌ 清理失败，请稍后重试', 'error');
+            }
+        }
+
+        // 打开版本
+        function openVersion(type) {
+            const url = type === 'desktop' ? 'https://www.bilibili.com' : 'https://m.bilibili.com';
+            const remember = document.getElementById('rememberCheck').checked;
+            
+            if (remember) {
+                localStorage.setItem('preferredVersion', type);
+                localStorage.setItem('autoLaunch', 'true');
+            }
+            
+            window.location.href = url;
+        }
+
+        // 自动启动逻辑
+        window.onload = () => {
+            if (localStorage.getItem('autoLaunch') === 'true') {
+                const pref = localStorage.getItem('preferredVersion') || 'desktop';
+                const url = pref === 'desktop' ? 'https://www.bilibili.com' : 'https://m.bilibili.com';
+                document.getElementById('currentMode').textContent = `当前默认：${pref === 'desktop' ? '桌面版' : '手机版'}`;
+                // 短暂显示首页后再自动跳转（让用户能取消）
+                setTimeout(() => {
+                    if (confirm('是否立即进入默认版本？\n点击取消可修改设置')) {
+                        window.location.href = url;
+                    }
+                }, 800);
+            }
+        };
+    </script>
 </body>
 </html>
