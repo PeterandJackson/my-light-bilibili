@@ -1,165 +1,176 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>我的轻B站</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="manifest" href="manifest.json">
-    <link rel="preconnect" href="https://www.bilibili.com" crossorigin>
-    <link rel="dns-prefetch" href="https://www.bilibili.com">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        .btn { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
-        .btn:active { transform: scale(0.95); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>我的轻B站</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    .video-card { transition: all 0.2s; }
+    .video-card:hover { transform: scale(1.03); }
+    .tab-active { color: #fb7299; border-top: 3px solid #fb7299; }
+    .modal { animation: fadeIn 0.3s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  </style>
 </head>
-<body class="bg-zinc-100 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 min-h-screen flex flex-col">
-    <!-- 顶部标题栏 -->
-    <div class="fixed top-0 left-0 right-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 z-50">
-        <div class="max-w-md mx-auto px-6 py-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-                <div class="w-9 h-9 bg-gradient-to-br from-pink-500 to-purple-500 rounded-3xl flex items-center justify-center text-white text-2xl shadow">哔</div>
-                <div>
-                    <div class="font-semibold text-2xl tracking-tighter">我的轻B站</div>
-                    <div class="text-xs text-zinc-500 dark:text-zinc-400 -mt-1">iOS 17风格 · 老设备友好</div>
-                </div>
+<body class="bg-zinc-950 text-white min-h-screen pb-16">
+  <!-- Header -->
+  <header class="bg-black sticky top-0 z-50 p-4 flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <div class="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center text-xl font-bold">轻</div>
+      <h1 class="text-2xl font-bold">我的轻B站</h1>
+    </div>
+    <div class="text-sm opacity-70">编程小白 · v1.0</div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="p-4" id="main-content">
+    <!-- 首页 Tab 默认显示 -->
+    <div id="home-tab">
+      <div class="relative mb-6">
+        <input id="search-input" type="text" placeholder="搜索视频、UP主..." 
+               class="w-full bg-zinc-900 rounded-2xl py-3 px-5 text-base focus:outline-none focus:ring-2 focus:ring-pink-500">
+      </div>
+      <h2 class="text-xl font-bold mb-4 flex items-center gap-2">
+        🔥 今日热门
+      </h2>
+      <div id="video-grid" class="grid grid-cols-2 gap-4">
+        <!-- JS 动态填充 -->
+      </div>
+    </div>
+
+    <!-- 搜索结果（隐藏） -->
+    <div id="search-tab" class="hidden">
+      <h2 id="search-title" class="text-xl font-bold mb-4">搜索结果</h2>
+      <div id="search-grid" class="grid grid-cols-2 gap-4">
+        <!-- JS 动态填充 -->
+      </div>
+    </div>
+
+    <!-- 动态 & 我的 Tab（简易版，可后续扩展） -->
+    <div id="dynamic-tab" class="hidden text-center py-20 text-zinc-500">动态功能开发中...</div>
+    <div id="me-tab" class="hidden text-center py-20 text-zinc-500">我的空间开发中...</div>
+  </main>
+
+  <!-- 底部 Tab Bar -->
+  <nav class="fixed bottom-0 left-0 right-0 bg-zinc-950 border-t border-zinc-800 z-50">
+    <div class="flex text-xs">
+      <button onclick="switchTab(0)" class="tab-active flex-1 py-3 flex flex-col items-center gap-1">
+        <span class="text-2xl">🏠</span><span>首页</span>
+      </button>
+      <button onclick="switchTab(1)" class="flex-1 py-3 flex flex-col items-center gap-1">
+        <span class="text-2xl">🔍</span><span>搜索</span>
+      </button>
+      <button onclick="switchTab(2)" class="flex-1 py-3 flex flex-col items-center gap-1">
+        <span class="text-2xl">📢</span><span>动态</span>
+      </button>
+      <button onclick="switchTab(3)" class="flex-1 py-3 flex flex-col items-center gap-1">
+        <span class="text-2xl">👤</span><span>我的</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- 视频播放 Modal -->
+  <div id="video-modal" class="hidden fixed inset-0 bg-black z-[100] flex items-center justify-center">
+    <div class="w-full max-w-3xl modal bg-zinc-950 rounded-3xl overflow-hidden">
+      <div class="flex justify-between items-center p-4 border-b border-zinc-800">
+        <div id="modal-title" class="font-bold"></div>
+        <button onclick="closeModal()" class="text-3xl leading-none">×</button>
+      </div>
+      <iframe id="player-frame" class="w-full aspect-video" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <script>
+    const corsProxy = "https://corsproxy.io/?";
+    let currentTab = 0;
+
+    // 切换 Tab
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('nav button').forEach((btn, i) => {
+        btn.classList.toggle('tab-active', i === tab);
+      });
+      document.getElementById('home-tab').classList.toggle('hidden', tab !== 0);
+      document.getElementById('search-tab').classList.toggle('hidden', tab !== 1);
+      document.getElementById('dynamic-tab').classList.toggle('hidden', tab !== 2);
+      document.getElementById('me-tab').classList.toggle('hidden', tab !== 3);
+      
+      if (tab === 1) document.getElementById('search-input').focus();
+    }
+
+    // 渲染视频卡片
+    function renderVideos(containerId, videos) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = videos.map(v => `
+        <div onclick="playVideo('${v.bvid}', '${v.title}')" class="video-card bg-zinc-900 rounded-2xl overflow-hidden cursor-pointer">
+          <img src="${v.pic}" class="w-full aspect-video object-cover">
+          <div class="p-3">
+            <p class="line-clamp-2 text-sm font-medium leading-tight">${v.title}</p>
+            <div class="flex items-center gap-2 mt-3 text-xs text-zinc-400">
+              <span>👁️ ${parseInt(v.stat.view).toLocaleString()}</span>
+              <span>❤️ ${parseInt(v.stat.like).toLocaleString()}</span>
             </div>
-            <button id="nightBtn" class="w-11 h-11 flex items-center justify-center text-3xl rounded-3xl bg-zinc-100 dark:bg-zinc-800 active:scale-95 transition">
-                🌙
-            </button>
+          </div>
         </div>
-    </div>
+      `).join('');
+    }
 
-    <!-- 主区域 -->
-    <div class="flex-1 pt-24 pb-32 max-w-md mx-auto w-full px-6">
-        <div class="mt-6 bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl p-8">
-            <div class="text-center mb-10">
-                <div class="mx-auto w-24 h-24 bg-gradient-to-br from-pink-500 via-purple-500 to-violet-500 rounded-3xl flex items-center justify-center text-6xl shadow-inner mb-6">🚀</div>
-                <h1 class="text-4xl font-bold tracking-tighter">欢迎回来！</h1>
-                <p id="currentMode" class="mt-2 text-lg text-zinc-500 dark:text-zinc-400">当前默认：桌面版</p>
-            </div>
+    // 播放视频（嵌入式 Modal）
+    function playVideo(bvid, title) {
+      document.getElementById('modal-title').textContent = title;
+      const iframe = document.getElementById('player-frame');
+      iframe.src = `https://player.bilibili.com/player.html?bvid=${bvid}&page=1&autoplay=1&danmaku=1&high_quality=1`;
+      document.getElementById('video-modal').classList.remove('hidden');
+      document.getElementById('video-modal').classList.add('flex');
+    }
 
-            <!-- 切换按钮区 -->
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="openVersion('desktop')" 
-                        class="btn col-span-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:border-pink-500 rounded-3xl py-6 text-xl font-semibold shadow flex items-center justify-center gap-3">
-                    💻 打开桌面版
-                </button>
-                <button onclick="openVersion('mobile')" 
-                        class="btn bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 hover:border-pink-500 rounded-3xl py-6 text-xl font-semibold shadow flex items-center justify-center gap-3">
-                    📱 打开手机版
-                </button>
-            </div>
+    function closeModal() {
+      const modal = document.getElementById('video-modal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+      document.getElementById('player-frame').src = '';
+    }
 
-            <div class="mt-8 flex items-center gap-3 text-sm">
-                <input type="checkbox" id="rememberCheck" class="w-5 h-5 accent-pink-500">
-                <label for="rememberCheck" class="text-zinc-500 dark:text-zinc-400">记住本次选择，下次自动打开</label>
-            </div>
-        </div>
-    </div>
+    // 获取热门视频
+    async function loadPopular() {
+      try {
+        const res = await fetch(corsProxy + encodeURIComponent('https://api.bilibili.com/x/web-interface/popular?ps=20'));
+        const data = await res.json();
+        renderVideos('video-grid', data.data.list);
+      } catch (e) {
+        document.getElementById('video-grid').innerHTML = `<p class="col-span-2 text-center py-10 text-zinc-400">网络加载失败（可稍后刷新）</p>`;
+      }
+    }
 
-    <!-- 底部按钮区 -->
-    <div class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 z-50">
-        <div class="max-w-md mx-auto px-6 py-4">
-            <button onclick="clearCache()" 
-                    class="btn w-full bg-zinc-900 hover:bg-black dark:bg-white dark:hover:bg-zinc-100 dark:text-zinc-900 text-white font-semibold text-xl py-5 rounded-3xl shadow-lg flex items-center justify-center gap-3">
-                🧹 一键清理缓存
-            </button>
-            <p class="text-center text-xs text-zinc-400 mt-3">清理后重启App更丝滑</p>
-        </div>
-    </div>
+    // 搜索功能
+    document.getElementById('search-input').addEventListener('input', async (e) => {
+      const keyword = e.target.value.trim();
+      if (!keyword) {
+        document.getElementById('search-tab').classList.add('hidden');
+        return;
+      }
+      try {
+        const res = await fetch(corsProxy + encodeURIComponent(`https://api.bilibili.com/x/web-interface/search/type?search_type=video&keyword=${encodeURIComponent(keyword)}`));
+        const data = await res.json();
+        renderVideos('search-grid', data.data.result);
+        document.getElementById('search-title').textContent = `“${keyword}” 的搜索结果`;
+        document.getElementById('search-tab').classList.remove('hidden');
+      } catch (e) {}
+    });
 
-    <!-- Toast提示 -->
-    <div id="toast" class="hidden fixed bottom-28 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-6 py-3 rounded-3xl shadow-2xl flex items-center gap-3 text-base">
-        <span id="toastIcon"></span>
-        <span id="toastText"></span>
-    </div>
+    // 初始化
+    window.onload = () => {
+      loadPopular();
+      switchTab(0);
+    };
 
-    <script>
-        // Tailwind暗黑模式配置
-        function initTailwind() {
-            tailwind.config = { darkMode: 'class' };
-        }
-        initTailwind();
-
-        // 夜间模式（永久保存）
-        const nightBtn = document.getElementById('nightBtn');
-        let isDark = localStorage.getItem('darkMode') !== 'false';
-        document.documentElement.classList.toggle('dark', isDark);
-        nightBtn.textContent = isDark ? '☀️' : '🌙';
-
-        nightBtn.addEventListener('click', () => {
-            isDark = !isDark;
-            localStorage.setItem('darkMode', isDark);
-            document.documentElement.classList.toggle('dark', isDark);
-            nightBtn.textContent = isDark ? '☀️' : '🌙';
-        });
-
-        // 显示Toast
-        function showToast(text, type = 'success') {
-            const toast = document.getElementById('toast');
-            const icon = document.getElementById('toastIcon');
-            const msg = document.getElementById('toastText');
-            icon.textContent = type === 'success' ? '✅' : '❌';
-            msg.textContent = text;
-            toast.classList.remove('hidden');
-            toast.classList.add('flex');
-            setTimeout(() => {
-                toast.classList.add('hidden');
-                toast.classList.remove('flex');
-            }, 2500);
-        }
-
-        // 一键清理缓存
-        async function clearCache() {
-            try {
-                // 清理所有缓存
-                if ('caches' in window) {
-                    const keys = await caches.keys();
-                    await Promise.all(keys.map(key => caches.delete(key)));
-                }
-                // 注销Service Worker
-                if ('serviceWorker' in navigator) {
-                    const registrations = await navigator.serviceWorker.getRegistrations();
-                    await Promise.all(registrations.map(reg => reg.unregister()));
-                }
-                showToast('✅ 缓存清理成功！重启App体验更丝滑', 'success');
-                setTimeout(() => location.reload(), 1800);
-            } catch (err) {
-                showToast('❌ 清理失败，请稍后重试', 'error');
-            }
-        }
-
-        // 打开版本
-        function openVersion(type) {
-            const url = type === 'desktop' ? 'https://www.bilibili.com' : 'https://m.bilibili.com';
-            const remember = document.getElementById('rememberCheck').checked;
-            
-            if (remember) {
-                localStorage.setItem('preferredVersion', type);
-                localStorage.setItem('autoLaunch', 'true');
-            }
-            
-            window.location.href = url;
-        }
-
-        // 自动启动逻辑
-        window.onload = () => {
-            if (localStorage.getItem('autoLaunch') === 'true') {
-                const pref = localStorage.getItem('preferredVersion') || 'desktop';
-                const url = pref === 'desktop' ? 'https://www.bilibili.com' : 'https://m.bilibili.com';
-                document.getElementById('currentMode').textContent = `当前默认：${pref === 'desktop' ? '桌面版' : '手机版'}`;
-                // 短暂显示首页后再自动跳转（让用户能取消）
-                setTimeout(() => {
-                    if (confirm('是否立即进入默认版本？\n点击取消可修改设置')) {
-                        window.location.href = url;
-                    }
-                }, 800);
-            }
-        };
-    </script>
+    // 关闭 Modal 点击空白处
+    document.getElementById('video-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'video-modal') closeModal();
+    });
+  </script>
 </body>
 </html>
