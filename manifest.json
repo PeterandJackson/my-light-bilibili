@@ -1,7 +1,8 @@
 {
   "name": "我的轻B站",
   "short_name": "轻B站",
-  "start_url": "/",
+  "start_url": "https://m.bilibili.com/",
+  "scope": "https://m.bilibili.com/",
   "display": "fullscreen",
   "background_color": "#ffffff",
   "theme_color": "#fb7299",
